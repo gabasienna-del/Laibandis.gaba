@@ -17,6 +17,7 @@ class ShieldService : Service() {
         EventReactor.init()
         EventBridge.init()
         DefaultRules.load(this)
+        CallGuard.load(this)
 
         TaskQueue.start(this)
 

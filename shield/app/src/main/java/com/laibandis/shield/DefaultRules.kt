@@ -3,7 +3,6 @@ package com.laibandis.shield
 object DefaultRules {
     fun load(ctx: android.content.Context) {
 
-        // Когда обновился токен — пример реакции
         ActionEngine.add(
             ActionRule(
                 event = "TOKEN_UPDATED",
@@ -12,13 +11,14 @@ object DefaultRules {
             )
         )
 
-        // Когда LIVE прислал POST с phone → позвонить
+        // LIVE_POST → звонок с антидубликатами и кулдауном
         ActionEngine.add(
             ActionRule(
                 event = "LIVE_POST",
-                condition = { payload -> payload.isNotBlank() },
+                condition = { phone -> phone.isNotBlank() && CallGuard.canCall(ctx, phone) },
                 action = { phone ->
                     AutoCaller.call(ctx, phone)
+                    Telemetry.log(ctx, "AUTO_CALL $phone")
                 }
             )
         )
