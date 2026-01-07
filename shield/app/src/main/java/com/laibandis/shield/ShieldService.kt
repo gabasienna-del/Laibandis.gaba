@@ -12,6 +12,7 @@ class ShieldService : Service() {
         super.onCreate()
         ShieldState.ready = true
         LogBus.i("Shield engine started")
+        TaskQueue.start(this)
     }
 
     override fun onBind(i: Intent): IBinder = binder
@@ -25,11 +26,19 @@ class ShieldService : Service() {
         }
 
         override fun request(base: String, path: String, jsonBody: String): String {
+            val cacheKey = "$base|$path|$jsonBody"
+            // Сначала попробуем отдать из кэша
+            CacheStore.get(this@ShieldService, cacheKey)?.let { return it }
+
             return try {
                 val token = TokenStore.load(this@ShieldService)
-                val baseUrl = Router.resolve(base)
-                Http.forward(baseUrl + path, jsonBody, token)
+                val url = Router.resolve(base) + path
+                val res = Http.forward(url, jsonBody, token)
+                CacheStore.put(this@ShieldService, cacheKey, res)
+                res
             } catch (e: Exception) {
+                // Если сеть упала — кладём в очередь
+                TaskQueue.enqueue(this@ShieldService, QueuedTask(base, path, jsonBody))
                 ShieldState.lastError = e.toString()
                 LogBus.e(e.toString())
                 ""
