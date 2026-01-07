@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.laibandis.lspagent">
+
+    <application
+        android:label="Laibandis LSP Agent"
+        android:allowBackup="false"
+        android:debuggable="true">
+    </application>
+</manifest>
