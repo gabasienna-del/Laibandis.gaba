@@ -12,13 +12,16 @@ class ShieldService : Service() {
     override fun onCreate() {
         super.onCreate()
         ShieldState.ready = true
-        LogBus.i("Shield engine started")
+        LogBus.i("Shield autonomous engine started")
 
         EventReactor.init()
+        EventBridge.init()
+        DefaultRules.load(this)
+
         TaskQueue.start(this)
 
+        // системный heartbeat
         Scheduler.every(60_000) { Health.lastPing = System.currentTimeMillis() }
-        Scheduler.every(300_000) { ConfigUpdater.run(this) }
         Scheduler.start()
     }
 
@@ -44,13 +47,17 @@ class ShieldService : Service() {
                 val url = Router.resolve(base) + path
                 val res = Http.forward(url, jsonBody, token)
 
+                // Детектор POST-событий LIVE (твой домен)
+                if (base == "LIVE") {
+                    LivePostDetector.onPost(path, res)
+                }
+
                 if (path.contains("/profile")) {
                     ProfileStore.save(this@ShieldService, res)
                     EventBus.emit("PROFILE_UPDATED")
                 }
 
                 CacheStore.put(this@ShieldService, cacheKey, res)
-                Health.lastPing = System.currentTimeMillis()
                 Metrics.record(System.currentTimeMillis() - start, true)
                 Telemetry.log(this@ShieldService, "OK $base$path")
                 res
@@ -74,13 +81,16 @@ class ShieldService : Service() {
             val o = JSONObject()
             o.put("ready", ShieldState.ready)
             o.put("alive", Health.alive())
-            o.put("lastPing", Health.lastPing)
-            o.put("lastRequest", Health.lastRequest)
             o.put("requests", Metrics.requests.get())
             o.put("errors", Metrics.errors.get())
             o.put("avgLatency", Metrics.avgLatency())
             o.put("lastError", ShieldState.lastError ?: "")
+            o.put("debugProxy", DebugProxyController.isEnabled())
             return o.toString()
         }
+
+        override fun debugProxyStart() { DebugProxyController.start(this@ShieldService) }
+        override fun debugProxyStop()  { DebugProxyController.stop(this@ShieldService)  }
+        override fun debugProxyEnabled(): Boolean = DebugProxyController.isEnabled()
     }
 }
