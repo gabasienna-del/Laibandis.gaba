@@ -12,6 +12,8 @@ class ShieldService : Service() {
         super.onCreate()
         ShieldState.ready = true
         LogBus.i("Shield engine started")
+
+        EventReactor.init()
         TaskQueue.start(this)
 
         // health ping
@@ -47,6 +49,7 @@ class ShieldService : Service() {
 
                 if (path.contains("/profile")) {
                     ProfileStore.save(this@ShieldService, res)
+                    EventBus.emit("PROFILE_UPDATED")
                 }
 
                 CacheStore.put(this@ShieldService, cacheKey, res)
