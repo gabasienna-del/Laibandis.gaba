@@ -26,18 +26,24 @@ class ShieldService : Service() {
         }
 
         override fun request(base: String, path: String, jsonBody: String): String {
+            Health.lastRequest = System.currentTimeMillis()
             val cacheKey = "$base|$path|$jsonBody"
-            // Сначала попробуем отдать из кэша
             CacheStore.get(this@ShieldService, cacheKey)?.let { return it }
 
             return try {
                 val token = TokenStore.load(this@ShieldService)
                 val url = Router.resolve(base) + path
                 val res = Http.forward(url, jsonBody, token)
+
+                // если это профиль — сохраним локально
+                if (path.contains("/profile")) {
+                    ProfileStore.save(this@ShieldService, res)
+                }
+
                 CacheStore.put(this@ShieldService, cacheKey, res)
+                Health.lastPing = System.currentTimeMillis()
                 res
             } catch (e: Exception) {
-                // Если сеть упала — кладём в очередь
                 TaskQueue.enqueue(this@ShieldService, QueuedTask(base, path, jsonBody))
                 ShieldState.lastError = e.toString()
                 LogBus.e(e.toString())
