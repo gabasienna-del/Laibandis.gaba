@@ -16,6 +16,10 @@ class ShieldService : Service() {
 
         // health ping
         Scheduler.every(60_000) { Health.lastPing = System.currentTimeMillis() }
+
+        // обновление конфигурации каждые 5 минут
+        Scheduler.every(300_000) { ConfigUpdater.run(this) }
+
         Scheduler.start()
     }
 
