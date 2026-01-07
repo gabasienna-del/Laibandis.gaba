@@ -12,7 +12,16 @@ class ShieldService : Service() {
         super.onCreate()
         ShieldState.ready = true
         LogBus.i("Shield engine started")
+
         TaskQueue.start(this)
+
+        // health ping
+        Scheduler.every(60_000) { Health.lastPing = System.currentTimeMillis() }
+
+        // пример: можно будет потом обновлять конфиг
+        // Scheduler.every(300_000) { ConfigUpdater.run(this) }
+
+        Scheduler.start()
     }
 
     override fun onBind(i: Intent): IBinder = binder
@@ -35,7 +44,6 @@ class ShieldService : Service() {
                 val url = Router.resolve(base) + path
                 val res = Http.forward(url, jsonBody, token)
 
-                // если это профиль — сохраним локально
                 if (path.contains("/profile")) {
                     ProfileStore.save(this@ShieldService, res)
                 }
