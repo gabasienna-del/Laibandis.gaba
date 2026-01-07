@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.IBinder
 import com.laibandis.core.IShield
+import org.json.JSONObject
 
 class ShieldService : Service() {
 
@@ -16,12 +17,8 @@ class ShieldService : Service() {
         EventReactor.init()
         TaskQueue.start(this)
 
-        // health ping
         Scheduler.every(60_000) { Health.lastPing = System.currentTimeMillis() }
-
-        // обновление конфигурации каждые 5 минут
         Scheduler.every(300_000) { ConfigUpdater.run(this) }
-
         Scheduler.start()
     }
 
@@ -71,6 +68,19 @@ class ShieldService : Service() {
             val i = Intent(Intent.ACTION_CALL, Uri.parse("tel:$phone"))
             i.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(i)
+        }
+
+        override fun health(): String {
+            val o = JSONObject()
+            o.put("ready", ShieldState.ready)
+            o.put("alive", Health.alive())
+            o.put("lastPing", Health.lastPing)
+            o.put("lastRequest", Health.lastRequest)
+            o.put("requests", Metrics.requests.get())
+            o.put("errors", Metrics.errors.get())
+            o.put("avgLatency", Metrics.avgLatency())
+            o.put("lastError", ShieldState.lastError ?: "")
+            return o.toString()
         }
     }
 }
