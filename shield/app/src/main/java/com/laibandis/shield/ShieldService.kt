@@ -25,6 +25,7 @@ class ShieldService : Service() {
         // системный heartbeat
         Scheduler.every(60_000) { Health.lastPing = System.currentTimeMillis() }
         Scheduler.every(24 * 60 * 60 * 1000L) { BlacklistUpdater.run(this) }
+        Scheduler.every(24 * 60 * 60 * 1000L) { BlacklistStore.cleanup(this) }
         Scheduler.start()
     }
 
