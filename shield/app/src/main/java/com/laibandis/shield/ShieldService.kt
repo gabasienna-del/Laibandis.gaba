@@ -17,12 +17,14 @@ class ShieldService : Service() {
         EventReactor.init()
         EventBridge.init()
         DefaultRules.load(this)
+        BlacklistStore.load(this)
         CallGuard.load(this)
 
         TaskQueue.start(this)
 
         // системный heartbeat
         Scheduler.every(60_000) { Health.lastPing = System.currentTimeMillis() }
+        Scheduler.every(24 * 60 * 60 * 1000L) { BlacklistUpdater.run(this) }
         Scheduler.start()
     }
 

@@ -11,11 +11,15 @@ object DefaultRules {
             )
         )
 
-        // LIVE_POST → звонок с антидубликатами и кулдауном
+        // LIVE_POST → звонок (с кулдауном + чёрный список)
         ActionEngine.add(
             ActionRule(
                 event = "LIVE_POST",
-                condition = { phone -> phone.isNotBlank() && CallGuard.canCall(ctx, phone) },
+                condition = { phone ->
+                    phone.isNotBlank() &&
+                    !BlacklistStore.contains(phone) &&
+                    CallGuard.canCall(ctx, phone)
+                },
                 action = { phone ->
                     AutoCaller.call(ctx, phone)
                     Telemetry.log(ctx, "AUTO_CALL $phone")
