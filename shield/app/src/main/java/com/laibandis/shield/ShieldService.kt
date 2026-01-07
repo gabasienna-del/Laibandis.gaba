@@ -25,15 +25,10 @@ class ShieldService : Service() {
         }
 
         override fun request(base: String, path: String, jsonBody: String): String {
-            val token = TokenStore.load(this@ShieldService)
             return try {
-                val baseUrl = when(base){
-                    "AUTH"->"https://cas-gw-cf.euce1.laibandisapp.com"
-                    "PROFILE"->"https://pf-gw-cf.euce1.laibandisapp.com"
-                    "LIVE"->"https://icl-gw-cf.euce1.laibandisapp.com"
-                    else->error("Unknown base")
-                }
-                Http.forward(baseUrl+path, jsonBody, token)
+                val token = TokenStore.load(this@ShieldService)
+                val baseUrl = Router.resolve(base)
+                Http.forward(baseUrl + path, jsonBody, token)
             } catch (e: Exception) {
                 ShieldState.lastError = e.toString()
                 LogBus.e(e.toString())
