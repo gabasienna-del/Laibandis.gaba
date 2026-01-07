@@ -1,0 +1,3 @@
+rootProject.name="Laibandis"
+include(":app")
+include(":shield:app")
