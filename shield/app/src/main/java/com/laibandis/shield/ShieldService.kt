@@ -12,15 +12,10 @@ class ShieldService : Service() {
         super.onCreate()
         ShieldState.ready = true
         LogBus.i("Shield engine started")
-
         TaskQueue.start(this)
 
         // health ping
         Scheduler.every(60_000) { Health.lastPing = System.currentTimeMillis() }
-
-        // пример: можно будет потом обновлять конфиг
-        // Scheduler.every(300_000) { ConfigUpdater.run(this) }
-
         Scheduler.start()
     }
 
@@ -31,6 +26,7 @@ class ShieldService : Service() {
         override fun setToken(token: String) {
             TokenStore.save(this@ShieldService, token)
             LogBus.i("Token updated")
+            Telemetry.log(this@ShieldService, "TOKEN_UPDATED")
             EventBus.emit("TOKEN_UPDATED")
         }
 
@@ -39,6 +35,7 @@ class ShieldService : Service() {
             val cacheKey = "$base|$path|$jsonBody"
             CacheStore.get(this@ShieldService, cacheKey)?.let { return it }
 
+            val start = System.currentTimeMillis()
             return try {
                 val token = TokenStore.load(this@ShieldService)
                 val url = Router.resolve(base) + path
@@ -50,8 +47,12 @@ class ShieldService : Service() {
 
                 CacheStore.put(this@ShieldService, cacheKey, res)
                 Health.lastPing = System.currentTimeMillis()
+                Metrics.record(System.currentTimeMillis() - start, true)
+                Telemetry.log(this@ShieldService, "OK $base$path")
                 res
             } catch (e: Exception) {
+                Metrics.record(System.currentTimeMillis() - start, false)
+                Telemetry.log(this@ShieldService, "ERR $base$path : ${e.message}")
                 TaskQueue.enqueue(this@ShieldService, QueuedTask(base, path, jsonBody))
                 ShieldState.lastError = e.toString()
                 LogBus.e(e.toString())
